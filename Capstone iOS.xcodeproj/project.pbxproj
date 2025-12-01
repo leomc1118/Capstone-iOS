@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		7BCDBD172ECE0BE700295F90 /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = 7BCDBD162ECE0BE700295F90 /* Alamofire */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		7B69F5422E96A923004FA7EB /* Capstone iOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Capstone iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -36,6 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7BCDBD172ECE0BE700295F90 /* Alamofire in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,6 +83,7 @@
 			);
 			name = "Capstone iOS";
 			packageProductDependencies = (
+				7BCDBD162ECE0BE700295F90 /* Alamofire */,
 			);
 			productName = "Capstone iOS";
 			productReference = 7B69F5422E96A923004FA7EB /* Capstone iOS.app */;
@@ -107,6 +113,9 @@
 			);
 			mainGroup = 7B69F5392E96A923004FA7EB;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				7BCDBD152ECE0BE700295F90 /* XCRemoteSwiftPackageReference "Alamofire" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7B69F5432E96A923004FA7EB /* Products */;
 			projectDirPath = "";
@@ -337,6 +346,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		7BCDBD152ECE0BE700295F90 /* XCRemoteSwiftPackageReference "Alamofire" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Alamofire/Alamofire.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.10.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		7BCDBD162ECE0BE700295F90 /* Alamofire */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7BCDBD152ECE0BE700295F90 /* XCRemoteSwiftPackageReference "Alamofire" */;
+			productName = Alamofire;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 7B69F53A2E96A923004FA7EB /* Project object */;
 }

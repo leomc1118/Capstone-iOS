@@ -7,10 +7,12 @@
 
 import UIKit
 import CoreBluetooth
+import Alamofire
 
 class NodeDetailsController: UIViewController, CBCentralManagerDelegate, CBPeripheralDelegate, UIGestureRecognizerDelegate {
 
     var node: Node?
+    var lastNetError: Int = 0
 
     private let detailView = NodeDetailsView()
     private var central: CBCentralManager!
@@ -230,5 +232,65 @@ class NodeDetailsController: UIViewController, CBCentralManagerDelegate, CBPerip
               let data = characteristic.value,
               let text = String(data: data, encoding: .utf8) else { return }
         detailView.appendLog("⬅️ \(text)")
+        
+        let node = Node(UUID: peripheral.identifier.uuidString, advName: peripheral.name ?? "Unknown", sensorData: text)
+        postNode(node)
+    }
+    
+    func postNode(_ node: Node){
+        self.detailView.appendLog("ℹ️ Web POST in progress...")
+        if let url = URL(string: APIConfigs.baseURL+"post"){
+            
+            AF.request(url, method:.post, parameters:
+                        [
+                            "UUID": node.UUID,
+                            "advertisingName": node.advName,
+                            "data": node.sensorData
+                        ], encoding: JSONEncoding.default)
+                .responseString(completionHandler: { response in
+                    //MARK: retrieving the status code...
+                    let status = response.response?.statusCode
+                    
+                    switch response.result{
+                    case .success(let data):
+                        //MARK: there was no network error...
+                        
+                        //MARK: status code is Optional, so unwrapping it...
+                        if let uwStatusCode = status{
+                            switch uwStatusCode{
+                                case 200...299:
+                                //MARK: the request was valid 200-level...
+                                    self.detailView.appendLog("✅ Web POST success")
+                                    print(node)
+                                    break
+                        
+                                case 400...499:
+                                //MARK: the request was not valid 400-level...
+                                    print(data)
+                                    self.lastNetError = uwStatusCode
+                                    break
+                        
+                                default:
+                                //MARK: probably a 500-level error...
+                                    print(data)
+                                    self.lastNetError = uwStatusCode
+                                    break
+                        
+                            }
+                        }
+                        break
+                        
+                    case .failure(let error):
+                        //MARK: there was a network error...
+                        print(error)
+                        if let uwStatusCode = status {
+                            self.lastNetError = uwStatusCode
+                        }
+                        break
+                    }
+                })
+        }else{
+            print("Invalid URL for method add")
+        }
     }
 }

@@ -69,7 +69,7 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
         discoveredPeripherals[peripheral.identifier] = peripheral
 
         if !nodes.contains(where: { $0.UUID == peripheral.identifier.uuidString }) {
-            nodes.append(Node(UUID: peripheral.identifier.uuidString, advName: displayName))
+            nodes.append(Node(UUID: peripheral.identifier.uuidString, advName: displayName, sensorData: ""))
             homeScreen.nodeTable.reloadData()
         }
     }
