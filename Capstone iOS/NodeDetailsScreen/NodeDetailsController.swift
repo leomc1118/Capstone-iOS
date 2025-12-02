@@ -8,8 +8,9 @@
 import UIKit
 import CoreBluetooth
 import Alamofire
+import CoreLocation
 
-class NodeDetailsController: UIViewController, CBCentralManagerDelegate, CBPeripheralDelegate, UIGestureRecognizerDelegate {
+class NodeDetailsController: UIViewController, CBCentralManagerDelegate, CBPeripheralDelegate, UIGestureRecognizerDelegate, CLLocationManagerDelegate {
 
     var node: Node?
     var lastNetError: Int = 0
@@ -19,11 +20,19 @@ class NodeDetailsController: UIViewController, CBCentralManagerDelegate, CBPerip
     private var targetPeripheral: CBPeripheral?
     private var uartTX: CBCharacteristic?
     private var uartRX: CBCharacteristic?
+    private var pendingNodeForPost: Node?
+    private var hasRequestedLocation = false
+    private var hasReceivedLocation = false
 
+    private let locationManager = CLLocationManager()
+    
     private let uartService = CBUUID(string: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
     private let txChar     = CBUUID(string: "6E400002-B5A3-F393-E0A9-E50E24DCCA9E")
     private let rxChar     = CBUUID(string: "6E400003-B5A3-F393-E0A9-E50E24DCCA9E")
 
+    var currentLatitude: CLLocationDegrees?
+    var currentLongitude: CLLocationDegrees?
+    
     override func loadView() {
         view = detailView
     }
@@ -38,10 +47,16 @@ class NodeDetailsController: UIViewController, CBCentralManagerDelegate, CBPerip
         tap.delegate = self
         view.addGestureRecognizer(tap)
         central = CBCentralManager(delegate: self, queue: nil)
+        locationManager.delegate = self
+        locationManager.requestWhenInUseAuthorization() // Or requestAlwaysAuthorization()
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        hasRequestedLocation = false
+        hasReceivedLocation = false
+        currentLatitude = nil
+        currentLongitude = nil
         NotificationCenter.default.addObserver(self,
                                                selector: #selector(handleKeyboard(notification:)),
                                                name: UIResponder.keyboardWillChangeFrameNotification,
@@ -137,6 +152,7 @@ class NodeDetailsController: UIViewController, CBCentralManagerDelegate, CBPerip
         switch central.state {
         case .poweredOn:
             connectToNode()
+            requestLocationIfNeeded()
         case .poweredOff:
             detailView.updateStatus("Please turn Bluetooth on.")
         case .unauthorized:
@@ -161,6 +177,7 @@ class NodeDetailsController: UIViewController, CBCentralManagerDelegate, CBPerip
 
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         appendStatus("Connected. Discovering services...")
+        requestLocationIfNeeded()
         peripheral.discoverServices([uartService])
     }
 
@@ -231,22 +248,96 @@ class NodeDetailsController: UIViewController, CBCentralManagerDelegate, CBPerip
         guard characteristic.uuid == rxChar,
               let data = characteristic.value,
               let text = String(data: data, encoding: .utf8) else { return }
-        detailView.appendLog("⬅️ \(text)")
-        
-        let node = Node(UUID: peripheral.identifier.uuidString, advName: peripheral.name ?? "Unknown", sensorData: text)
-        postNode(node)
+
+        let intValues = text
+            .split(separator: ",")
+            .compactMap { Int($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
+
+        detailView.appendLog("⬅️ \(intValues)")
+
+        let node = Node(UUID: peripheral.identifier.uuidString,
+                        advName: peripheral.name ?? "Unknown",
+                        sensorData: intValues)
+        pendingNodeForPost = node
+
+        if currentLatitude != nil && currentLongitude != nil {
+            tryPostPendingNode()
+        } else {
+            detailView.appendLog("ℹ️ Waiting for location...")
+            requestLocationIfNeeded()
+        }
     }
     
-    func postNode(_ node: Node){
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        if let location = locations.first {
+            if hasReceivedLocation { return }
+            hasReceivedLocation = true
+
+            self.currentLatitude = location.coordinate.latitude
+            self.currentLongitude = location.coordinate.longitude
+            
+            print("Received one-time location: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+            tryPostPendingNode()
+        }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        print("Location request failed with error: \(error.localizedDescription)")
+    }
+
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        switch manager.authorizationStatus {
+        case .authorizedWhenInUse:
+            print("Authorization granted. Requesting location...")
+            requestLocationIfNeeded()
+        case .denied, .restricted:
+            print("Authorization denied or restricted. Cannot get location.")
+            // Guide the user to enable location services in settings
+        case .notDetermined:
+            print("Authorization status not determined.")
+        default:
+            break
+        }
+    }
+    
+    private func requestLocationIfNeeded() {
+        let status = locationManager.authorizationStatus
+        guard status == .authorizedWhenInUse || status == .authorizedAlways else { return }
+        if !hasRequestedLocation {
+            hasRequestedLocation = true
+            locationManager.requestLocation()
+        }
+    }
+
+    private func tryPostPendingNode() {
+        guard let node = pendingNodeForPost,
+              let lat = currentLatitude,
+              let lon = currentLongitude else { return }
+        postNode(node, lat: lat, lon: lon)
+        pendingNodeForPost = nil
+    }
+
+    func postNode(_ node: Node, lat: CLLocationDegrees, lon: CLLocationDegrees){
         self.detailView.appendLog("ℹ️ Web POST in progress...")
         if let url = URL(string: APIConfigs.baseURL+"post"){
-            
-            AF.request(url, method:.post, parameters:
-                        [
-                            "UUID": node.UUID,
-                            "advertisingName": node.advName,
-                            "data": node.sensorData
-                        ], encoding: JSONEncoding.default)
+            // Safely map sensorData into structured fields; default to 0 if missing
+            let values = node.sensorData + Array(repeating: 0, count: max(0, 6 - node.sensorData.count))
+            let payload: [String: Any] = [
+                "UUID": node.UUID,
+                "advertisingName": node.advName,
+                "latitude": lat,
+                "longitude": lon,
+                "data": [
+                    "temp": [values[0]],
+                    "humidity": [values[1]],
+                    "gas": [values[2]],
+                    "accelX": [values[3]],
+                    "accelY": [values[4]],
+                    "accelZ": [values[5]]
+                ]
+            ]
+
+            AF.request(url, method:.post, parameters: payload, encoding: JSONEncoding.default)
                 .responseString(completionHandler: { response in
                     //MARK: retrieving the status code...
                     let status = response.response?.statusCode

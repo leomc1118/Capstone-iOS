@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>We need location access to give the website node map a location.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>We need Bluetooth to discover and connect to Clampas.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>

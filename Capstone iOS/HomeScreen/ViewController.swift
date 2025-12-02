@@ -64,12 +64,12 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
                         rssi RSSI: NSNumber) {
         let advName = advertisementData[CBAdvertisementDataLocalNameKey] as? String
         let displayName = peripheral.name ?? advName ?? ""
-        guard displayName.contains("RAK4631") else { return } 
+        guard displayName.contains("RAK") else { return } 
 
         discoveredPeripherals[peripheral.identifier] = peripheral
 
         if !nodes.contains(where: { $0.UUID == peripheral.identifier.uuidString }) {
-            nodes.append(Node(UUID: peripheral.identifier.uuidString, advName: displayName, sensorData: ""))
+            nodes.append(Node(UUID: peripheral.identifier.uuidString, advName: displayName, sensorData: []))
             homeScreen.nodeTable.reloadData()
         }
     }
