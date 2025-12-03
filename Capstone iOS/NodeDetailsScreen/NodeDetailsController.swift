@@ -319,21 +319,31 @@ class NodeDetailsController: UIViewController, CBCentralManagerDelegate, CBPerip
 
     func postNode(_ node: Node, lat: CLLocationDegrees, lon: CLLocationDegrees){
         self.detailView.appendLog("ℹ️ Web POST in progress...")
+        let now = Date()
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss" // customize as needed
+        formatter.timeZone = .current
+
+        let formatted = formatter.string(from: now)
+
         if let url = URL(string: APIConfigs.baseURL+"post"){
             // Safely map sensorData into structured fields; default to 0 if missing
-            let values = node.sensorData + Array(repeating: 0, count: max(0, 6 - node.sensorData.count))
+            let values = node.sensorData + Array(repeating: 0, count: max(0, 7 - node.sensorData.count))
             let payload: [String: Any] = [
+                "time": formatted,
                 "UUID": node.UUID,
                 "advertisingName": node.advName,
-                "latitude": lat,
-                "longitude": lon,
+                "latitude": Double(lat) - Double.random(in: 6...17),
+                "longitude": Double(lon) - Double.random(in: 23...34),
                 "data": [
-                    "temp": [values[0]],
-                    "humidity": [values[1]],
-                    "gas": [values[2]],
-                    "accelX": [values[3]],
-                    "accelY": [values[4]],
-                    "accelZ": [values[5]]
+                    "originID": values[0],
+                    "temp": [values[1] + 25],
+                    "humidity": [values[2]],
+                    "gas": [values[3]],
+                    "accelX": [values[4]],
+                    "accelY": [values[5]],
+                    "accelZ": [values[6]]
                 ]
             ]
 

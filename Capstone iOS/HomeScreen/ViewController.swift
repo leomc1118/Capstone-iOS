@@ -64,8 +64,8 @@ class ViewController: UIViewController, CBCentralManagerDelegate, CBPeripheralDe
                         rssi RSSI: NSNumber) {
         let advName = advertisementData[CBAdvertisementDataLocalNameKey] as? String
         let displayName = peripheral.name ?? advName ?? ""
-        guard displayName.contains("RAK") else { return } 
-
+        guard displayName.contains("RAK") else { return }
+        
         discoveredPeripherals[peripheral.identifier] = peripheral
 
         if !nodes.contains(where: { $0.UUID == peripheral.identifier.uuidString }) {
